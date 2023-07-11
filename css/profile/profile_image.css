@@ -1,0 +1,37 @@
+.logo-image {
+  position: absolute;
+  top: 280px; /* Adjust the top position as needed */
+  left: 80px; /* Adjust the left position as needed */
+  z-index: 2; /* Ensure the logo appears above other elements */
+  width: 150px;
+  height: 150px;
+  background-color: #ffffff; /* Set the background color */
+  border-radius: 50%; /* Apply a circular shape to the logo */
+  box-shadow: 0 10px 10px rgba(0, 0, 0, 0.2); /* Add a shadow effect */
+}
+
+.banner-image {
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 15px;
+  position: relative; /* Add relative positioning to the banner */
+  z-index: 1; /* Ensure the banner appears below the logo */
+  background-color: transparent; /* Set the background color */
+  box-shadow: 0 0px 0px rgba(0, 0, 0, 0.2); /* Add a shadow effect */
+}
+
+.user-details {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.username {
+  margin-bottom: 10px;
+}
+
+.follow-count a {
+  margin-right: 10px;
+}

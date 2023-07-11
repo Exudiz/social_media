@@ -1,0 +1,43 @@
+.container {
+  margin-top: 20px;
+}
+
+h3 {
+  margin-top: 20px;
+}
+
+.card {
+  margin-bottom: 20px;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+}
+
+.card-title small {
+  margin-left: 10px;
+  font-size: 12px;
+  color: #888;
+}
+
+.visibility-info {
+  font-size: 12px;
+  color: #888;
+}
+
+.card-text {
+  margin-top: 10px;
+}
+
+.card-footer {
+  margin-top: 10px;
+}
+
+form .form-group {
+  margin-bottom: 10px;
+}
+
+.btn-primary {
+  margin-top: 10px;
+}
