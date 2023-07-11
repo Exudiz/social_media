@@ -64,7 +64,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['upload_logo'])) {
         // Check if the dimensions match the required size
         if ($logoWidth == 132 && $logoHeight == 132) {
             // Specify the directory where the logo images will be stored
-            $uploadDirectory = 'uploads/default-logo.png';
+            $uploadDirectory = 'uploads/';
 
             // Generate a unique filename for the logo image
             $logoPath = $uploadDirectory . uniqid() . '_' . $logoName;
@@ -108,7 +108,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['upload_banner'])) {
         // Check if the dimensions match the required size
         if ($bannerWidth == 640 && $bannerHeight == 312) {
             // Specify the directory where the banner images will be stored
-            $uploadDirectory = 'uploads/default-banner.png';
+            $uploadDirectory = 'uploads/';
 
             // Generate a unique filename for the banner image
             $bannerPath = $uploadDirectory . uniqid() . '_' . $bannerName;
@@ -163,7 +163,7 @@ mysqli_close($conn);
         <input type="file" name="logo" id="logo" required>
         <small>Maximum dimensions: 132 x 132 pixels</small>
         <br>
-        <input type="submit" name="upload_logo" value="Upload Logo">
+        <button type="submit" class="btn btn-primary" name="upload_logo">Upload Logo</button>
     </form>
 
     <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST" enctype="multipart/form-data">
@@ -171,7 +171,7 @@ mysqli_close($conn);
         <input type="file" name="banner" id="banner">
         <small>Maximum dimensions: 640 x 312 pixels</small>
         <br>
-        <input type="submit" name="upload_banner" value="Upload Banner">
+        <button type="submit" class="btn btn-primary" name="upload_banner">Upload Banner</button>
     </form>
 </div>
 

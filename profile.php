@@ -21,23 +21,23 @@ if (!$conn) {
     die("Connection failed: " . mysqli_connect_error());
 }
 
+// Fetch user's logo path
+$userLogo = isset($_SESSION['user_logo']) ? $_SESSION['user_logo'] : '';
+if (empty($userLogo)) {
+    $userLogo = 'uploads/default-logo.png'; // Set the default logo path
+}
+
 // Fetch user's banner path
 $userBanner = isset($_SESSION['user_banner']) ? $_SESSION['user_banner'] : '';
 if (empty($userBanner)) {
-    // Fetch banner path from the database
-    $sql_user_banner = "SELECT banner FROM users WHERE id='$profile_user_id'";
-    $result_user_banner = mysqli_query($conn, $sql_user_banner);
-    if (mysqli_num_rows($result_user_banner) > 0) {
-        $row_user_banner = mysqli_fetch_assoc($result_user_banner);
-        $userBanner = $row_user_banner['banner'];
-        $_SESSION['user_banner'] = $userBanner;
-    } else {
-        $userBanner = 'uploads/default-banner.png'; // Set the default banner path
-    }
+    $userBanner = 'uploads/default-banner.png'; // Set the default banner path
 }
 
 // Fetch user profile information
 $username = ''; // Initialize $username variable
+$userLogo = 'uploads/default-logo.png'; // Default logo path
+$userBanner = 'uploads/default-banner.png'; // Default banner path
+
 if (isset($_SESSION['user_row'])) {
     $row = $_SESSION['user_row'];
     if (isset($row['username'])) {
@@ -56,6 +56,9 @@ if (isset($_SESSION['user_row'])) {
         } else {
             $error = "Username not found!";
         }
+        // Fetch the logo and banner paths from the user profile table
+        $userLogo = $row['logo'];
+        $userBanner = $row['banner'];
     } else {
         $error = "User profile not found!";
     }
@@ -225,17 +228,23 @@ mysqli_close($conn);
 
       <div class="banner-image" style="position: relative;">
           <?php if (!empty($userLogo)): ?>
-              <div class="logo-overlay">
+              <div class="logo-overlay" onclick="document.getElementById('logo-form').submit();">
                   <img src="<?php echo $userLogo; ?>" alt="Profile Logo" class="logo-image">
+              </div>
+          <?php else: ?>
+              <div class="logo-overlay" onclick="document.getElementById('logo-form').submit();">
+                  <img src="uploads/default-logo.png" alt="Default Logo" class="logo-image">
               </div>
           <?php endif; ?>
 
           <?php if (!empty($userBanner)): ?>
-              <div class="banner-overlay">
+              <div class="banner-overlay" onclick="document.getElementById('banner-form').submit();">
                   <img src="<?php echo $userBanner; ?>" alt="Profile Banner" class="banner-image">
               </div>
           <?php else: ?>
-
+              <div class="banner-overlay" onclick="document.getElementById('banner-form').submit();">
+                  <img src="uploads/default-banner.png" alt="Default Banner" class="banner-image">
+              </div>
           <?php endif; ?>
       </div>
 
