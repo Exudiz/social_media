@@ -1,6 +1,4 @@
-//search.php
 <?php
-session_start();
 require_once 'config.php';
 
 // Check if the user is logged in
@@ -15,23 +13,62 @@ if (!$conn) {
     die("Connection failed: " . mysqli_connect_error());
 }
 
+// Create the search_history table if it doesn't exist
+$sql_create_table = "CREATE TABLE IF NOT EXISTS search_history (
+  id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT(11) UNSIGNED NOT NULL,
+  search_term VARCHAR(255) NOT NULL,
+  search_date DATETIME NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+)";
+mysqli_query($conn, $sql_create_table);
+
 // Search functionality
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['search'])) {
     $searchTerm = $_POST['search_term'];
 
-    // Fetch search results from the database
-    $sql = "SELECT * FROM users WHERE username LIKE '%$searchTerm%'";
-    $result = mysqli_query($conn, $sql);
+    // Store the search query in the search history table
+    $user_id = $_SESSION['user_id'];
+    $timestamp = date("Y-m-d H:i:s");
+    $sql_search_history = "INSERT INTO search_history (user_id, search_term, search_date) VALUES ('$user_id', '$searchTerm', '$timestamp')";
+    mysqli_query($conn, $sql_search_history);
 
-    if ($result) {
-        $searchResults = [];
-        if (mysqli_num_rows($result) > 0) {
-            while ($row = mysqli_fetch_assoc($result)) {
-                $searchResults[] = $row;
+    // Fetch user search results from the database
+    $sql_user = "SELECT id, username FROM users
+            WHERE username LIKE '%$searchTerm%'
+            OR email LIKE '%$searchTerm%'
+            OR phone LIKE '%$searchTerm%'";
+    $result_user = mysqli_query($conn, $sql_user);
+
+    if ($result_user) {
+        $userResults = [];
+        if (mysqli_num_rows($result_user) > 0) {
+            while ($row_user = mysqli_fetch_assoc($result_user)) {
+                $userResults[] = $row_user;
             }
         }
     } else {
-        $error = "Error executing search query: " . mysqli_error($conn);
+        $error = "Error executing user search query: " . mysqli_error($conn);
+    }
+
+    // Fetch hashtag search results from the database
+    $sql_hashtag = "SELECT hashtags.tag, posts.content, users.username, users.id AS user_id, COUNT(hashtags.tag) AS tag_count
+            FROM hashtags
+            INNER JOIN posts ON hashtags.post_id = posts.id
+            INNER JOIN users ON posts.user_id = users.id
+            WHERE hashtags.tag LIKE '%$searchTerm%'
+            GROUP BY hashtags.tag";
+    $result_hashtag = mysqli_query($conn, $sql_hashtag);
+
+    if ($result_hashtag) {
+        $hashtagResults = [];
+        if (mysqli_num_rows($result_hashtag) > 0) {
+            while ($row_hashtag = mysqli_fetch_assoc($result_hashtag)) {
+                $hashtagResults[] = $row_hashtag;
+            }
+        }
+    } else {
+        $error = "Error executing hashtag search query: " . mysqli_error($conn);
     }
 }
 
@@ -41,7 +78,7 @@ mysqli_close($conn);
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Search Users</title>
+    <title>Search Users and Hashtags</title>
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <!-- Custom CSS -->
@@ -53,7 +90,7 @@ mysqli_close($conn);
 <?php include 'header.php'; ?>
 
 <div class="container">
-    <h2>Search Users</h2>
+    <h2>Search Users and Hashtags</h2>
     <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST">
         <div class="form-group">
             <label for="search_term">Search Term:</label>
@@ -64,15 +101,35 @@ mysqli_close($conn);
 
     <?php if (isset($error)) { ?>
         <div class="alert alert-danger"><?php echo $error; ?></div>
-    <?php } elseif (!empty($searchResults)) { ?>
-        <h3>Search Results</h3>
-        <ul>
-            <?php foreach ($searchResults as $result) { ?>
-                <li><a href="user_profile.php?user_id=<?php echo $result['id']; ?>"><?php echo $result['username']; ?></a></li>
-            <?php } ?>
-        </ul>
-    <?php } else { ?>
-        <p>No users found.</p>
+    <?php } ?>
+
+    <?php if (!empty($userResults)) { ?>
+        <h3>User Results</h3>
+        <?php foreach ($userResults as $result) { ?>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><a href="user_profile.php?user_id=<?php echo $result['id']; ?>"><?php echo $result['username']; ?></a></h5>
+                </div>
+            </div>
+        <?php } ?>
+    <?php } ?>
+
+    <?php if (!empty($hashtagResults)) { ?>
+        <h3>Hashtag Results</h3>
+        <?php foreach ($hashtagResults as $result) { ?>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><?php echo $result['tag']; ?></h5>
+                    <p class="card-text">Content: <?php echo $result['content']; ?></p>
+                    <p class="card-text">Posted by: <a href="user_profile.php?user_id=<?php echo $result['user_id']; ?>"><?php echo $result['username']; ?></a></p>
+                    <p class="card-text">Tag Count: <?php echo $result['tag_count']; ?></p>
+                </div>
+            </div>
+        <?php } ?>
+    <?php } ?>
+
+    <?php if (empty($userResults) && empty($hashtagResults)) { ?>
+        <p>No users or hashtags found.</p>
     <?php } ?>
 </div>
 

@@ -1,5 +1,4 @@
 <?php
-session_start();
 require_once 'config.php';
 
 // Check if the user is logged in
@@ -59,6 +58,7 @@ mysqli_close($conn);
     <style>
         /* Add your custom styles here */
     </style>
+    <meta http-equiv="refresh" content="3;url=profile.php">
 </head>
 <body>
 <?php include 'header.php'; ?>
@@ -71,11 +71,6 @@ mysqli_close($conn);
     <?php if (isset($message)) { ?>
         <div class="alert alert-success"><?php echo $message; ?></div>
     <?php } ?>
-    <p>Are you sure you want to delete this comment?</p>
-    <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"] . "?comment_id=" . $comment_id); ?>" method="POST">
-        <button type="submit" class="btn btn-danger" name="delete_comment">Delete</button>
-        <a href="index.php" class="btn btn-secondary">Cancel</a>
-    </form>
 </div>
 <!-- jQuery, Popper.js, and Bootstrap JS -->
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>

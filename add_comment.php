@@ -1,7 +1,10 @@
 <?php
-session_start();
 require_once 'config.php';
 
+$conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
+if (!$conn) {
+    die("Connection failed: " . mysqli_connect_error());
+}
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['comment_content'])) {
     $post_id = $_POST['post_id'];
     $comment_content = $_POST['comment_content'];
@@ -20,5 +23,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['comment_content'])) {
     }
 }
 
-mysqli_close($conn);
 ?>

@@ -1,5 +1,4 @@
 <?php
-session_start();
 require_once 'config.php';
 
 // Check if the user is logged in
@@ -58,6 +57,14 @@ if (isset($_SESSION['user_info'])) {
         $userInfo = $row_user_info;
         $_SESSION['user_info'] = $userInfo;
     }
+}
+
+// Fetch last login time and location
+$lastLoginTime = '';
+$lastLoginLocation = '';
+if (isset($userInfo['last_login'])) {
+    $lastLoginTime = $userInfo['last_login'];
+    $lastLoginLocation = $userInfo['last_login_location'];
 }
 
 mysqli_close($conn);
@@ -135,6 +142,14 @@ mysqli_close($conn);
             <tr>
                 <th>Location</th>
                 <td><?php echo $userInfo['location']; ?></td>
+            </tr>
+            <tr>
+                <th>Last Login</th>
+                <td><?php echo $lastLoginTime; ?></td>
+            </tr>
+            <tr>
+                <th>Last Login Location</th>
+                <td><?php echo $lastLoginLocation; ?></td>
             </tr>
             </tbody>
         </table>

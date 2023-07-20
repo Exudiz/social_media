@@ -1,0 +1,7 @@
+CREATE TABLE search_history (
+  id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT(11) UNSIGNED NOT NULL,
+  search_term VARCHAR(255) NOT NULL,
+  search_date DATETIME NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);

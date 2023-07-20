@@ -9,6 +9,28 @@ $userLogo = isset($_SESSION['user_logo']) ? $_SESSION['user_logo'] : 'uploads/de
 
 // Fetch user's information
 $userInfo = isset($_SESSION['user_info']) ? $_SESSION['user_info'] : array();
+
+// Establish a new database connection
+$conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
+if (!$conn) {
+    die("Connection failed: " . mysqli_connect_error());
+}
+
+// Fetch the count of notifications for the current user
+$notificationCount = 0;
+if (isset($_SESSION['user_id'])) {
+    $userId = $_SESSION['user_id'];
+    $sql = "SELECT COUNT(*) AS count FROM notifications WHERE user_id = ?";
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $userId);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $row = mysqli_fetch_assoc($result);
+    $notificationCount = $row['count'];
+}
+
+// Close the database connection
+mysqli_close($conn);
 ?>
 
 <link rel="stylesheet" href="css/header.css">
@@ -28,8 +50,8 @@ $userInfo = isset($_SESSION['user_info']) ? $_SESSION['user_info'] : array();
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown"
                        aria-haspopup="true" aria-expanded="false">
-                        <?php echo $userInfo['username']; ?>
                         <img src="<?php echo $userLogo; ?>" alt="Profile Logo" width="30" height="30" class="mr-2">
+                        <?php echo $username; ?>
                     </a>
                     <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                         <a class="dropdown-item" href="/profile.php">Profile</a>
@@ -37,15 +59,27 @@ $userInfo = isset($_SESSION['user_info']) ? $_SESSION['user_info'] : array();
                         <div class="dropdown-divider"></div>
                         <a class="dropdown-item" href="/about.php">About</a>
                         <a class="dropdown-item" href="/profile_upload.php">Upload</a>
+                        <a class="dropdown-item" href="/message.php">Message</a>
                         <div class="dropdown-divider"></div>
                         <a class="dropdown-item" href="logout.php">Logout</a>
+                        <?php if (basename($_SERVER['PHP_SELF']) !== 'search.php'): ?>
+                            <a class="dropdown-item" href="search.php">Search</a>
+                        <?php endif; ?>
+
+                        <!-- Recent Activity Dropdown -->
+                        <div class="dropdown-divider"></div>
+                        <?php if (basename($_SERVER['PHP_SELF']) !== 'recent_activity.php'): ?>
+                            <a class="dropdown-item" href="recent_activity.php">Recent Activity</a>
+                        <?php endif; ?>
                     </div>
                 </li>
-                <?php if (basename($_SERVER['PHP_SELF']) !== 'search.php'): ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="search.php">Search Users</a>
-                    </li>
-                <?php endif; ?>
+                <li class="nav-item">
+                    <a class="nav-link" href="notifications.php">
+                        Notifications<?php if ($notificationCount > 0) : ?>
+                            <span class="badge badge-primary"><?php echo $notificationCount; ?></span>
+                        <?php endif; ?>
+                    </a>
+                </li>
             <?php else: ?>
                 <?php if (basename($_SERVER['PHP_SELF']) !== 'index.php'): ?>
                     <li class="nav-item">

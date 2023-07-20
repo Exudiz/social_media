@@ -1,5 +1,4 @@
 <?php
-session_start();
 require_once 'config.php';
 
 // Check if the user is logged in
@@ -62,7 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['upload_logo'])) {
         $logoHeight = $logoSize[1];
 
         // Check if the dimensions match the required size
-        if ($logoWidth == 132 && $logoHeight == 132) {
+        if ($logoWidth == 253 && $logoHeight == 199) {
             // Specify the directory where the logo images will be stored
             $uploadDirectory = 'uploads/';
 
@@ -106,7 +105,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['upload_banner'])) {
         $bannerHeight = $bannerSize[1];
 
         // Check if the dimensions match the required size
-        if ($bannerWidth == 640 && $bannerHeight == 312) {
+        if ($bannerWidth == 1315 && $bannerHeight == 500) {
             // Specify the directory where the banner images will be stored
             $uploadDirectory = 'uploads/';
 
@@ -127,7 +126,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['upload_banner'])) {
                 $error = "Error uploading banner: Failed to move the file.";
             }
         } else {
-            $error = "Invalid banner dimensions. Please upload an image with dimensions 640 x 312 pixels.";
+            $error = "Invalid banner dimensions. Please upload an image with dimensions 1315 x 500 pixels.";
         }
     } else {
         $error = "Error uploading banner: " . $bannerError;
@@ -161,7 +160,7 @@ mysqli_close($conn);
     <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST" enctype="multipart/form-data">
         <label for="logo">Profile Logo:</label>
         <input type="file" name="logo" id="logo" required>
-        <small>Maximum dimensions: 132 x 132 pixels</small>
+        <small>Maximum dimensions: 253 x 199 pixels</small>
         <br>
         <button type="submit" class="btn btn-primary" name="upload_logo">Upload Logo</button>
     </form>
@@ -169,7 +168,7 @@ mysqli_close($conn);
     <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST" enctype="multipart/form-data">
         <label for="banner">Profile Banner:</label>
         <input type="file" name="banner" id="banner">
-        <small>Maximum dimensions: 640 x 312 pixels</small>
+        <small>Maximum dimensions: 1315 x 500 pixels</small>
         <br>
         <button type="submit" class="btn btn-primary" name="upload_banner">Upload Banner</button>
     </form>

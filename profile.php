@@ -1,6 +1,7 @@
 <?php
-session_start();
 require_once 'config.php';
+require_once 'functions.php';
+
 
 // Check if the user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -16,111 +17,95 @@ if (!isset($_GET['user_id'])) {
 }
 
 // Database connection
-$conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
-if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
-}
+$conn = get_db_connection();
 
-// Fetch user's logo path
-$userLogo = isset($_SESSION['user_logo']) ? $_SESSION['user_logo'] : '';
-if (empty($userLogo)) {
-    $userLogo = 'uploads/default-logo.png'; // Set the default logo path
-}
+// Fetch user's profile information from the database
+$sql_user = "SELECT * FROM users WHERE id = ?";
+$stmt_user = mysqli_prepare($conn, $sql_user);
+mysqli_stmt_bind_param($stmt_user, "i", $profile_user_id);
+mysqli_stmt_execute($stmt_user);
+$result_user = mysqli_stmt_get_result($stmt_user);
 
-// Fetch user's banner path
-$userBanner = isset($_SESSION['user_banner']) ? $_SESSION['user_banner'] : '';
-if (empty($userBanner)) {
-    $userBanner = 'uploads/default-banner.png'; // Set the default banner path
-}
-
-// Fetch user profile information
-$username = ''; // Initialize $username variable
-$userLogo = 'uploads/default-logo.png'; // Default logo path
-$userBanner = 'uploads/default-banner.png'; // Default banner path
-
-if (isset($_SESSION['user_row'])) {
-    $row = $_SESSION['user_row'];
-    if (isset($row['username'])) {
-        $username = $row['username'];
-    } else {
-        $error = "Username not found!";
-    }
+if (mysqli_num_rows($result_user) > 0) {
+    $user = mysqli_fetch_assoc($result_user);
+    $username = $user['username'];
+    $userLogo = $user['logo'];
+    $userBanner = $user['banner'];
 } else {
-    $sql = "SELECT * FROM users WHERE id='$profile_user_id'";
-    $result = mysqli_query($conn, $sql);
-    if (mysqli_num_rows($result) > 0) {
-        $row = mysqli_fetch_assoc($result);
-        $_SESSION['user_row'] = $row;
-        if (isset($row['username'])) {
-            $username = $row['username'];
-        } else {
-            $error = "Username not found!";
-        }
-        // Fetch the logo and banner paths from the user profile table
-        $userLogo = $row['logo'];
-        $userBanner = $row['banner'];
-    } else {
-        $error = "User profile not found!";
-    }
-}
-
-// Fetch user's information
-$userInfo = array();
-if (isset($_SESSION['user_info'])) {
-    $userInfo = $_SESSION['user_info'];
-} else {
-    $sql_user_info = "SELECT * FROM users WHERE id='$profile_user_id'";
-    $result_user_info = mysqli_query($conn, $sql_user_info);
-    if (mysqli_num_rows($result_user_info) > 0) {
-        $row_user_info = mysqli_fetch_assoc($result_user_info);
-        $userInfo = $row_user_info;
-        $_SESSION['user_info'] = $userInfo;
-    }
+    $error = "User profile not found!";
 }
 
 // Fetch followers count
-$sql_followers_count = "SELECT COUNT(*) AS count FROM followers WHERE followee_id = '$profile_user_id'";
-$result_followers_count = mysqli_query($conn, $sql_followers_count);
+$sql_followers_count = "SELECT COUNT(*) AS count FROM followers WHERE followee_id = ?";
+$stmt_followers_count = mysqli_prepare($conn, $sql_followers_count);
+mysqli_stmt_bind_param($stmt_followers_count, "i", $profile_user_id);
+mysqli_stmt_execute($stmt_followers_count);
+$result_followers_count = mysqli_stmt_get_result($stmt_followers_count);
 $followers_count = 0;
+
 if (mysqli_num_rows($result_followers_count) > 0) {
     $row = mysqli_fetch_assoc($result_followers_count);
     $followers_count = $row['count'];
 }
 
 // Fetch following count
-$sql_following_count = "SELECT COUNT(*) AS count FROM followers WHERE follower_id = '$profile_user_id'";
-$result_following_count = mysqli_query($conn, $sql_following_count);
+$sql_following_count = "SELECT COUNT(*) AS count FROM followers WHERE follower_id = ?";
+$stmt_following_count = mysqli_prepare($conn, $sql_following_count);
+mysqli_stmt_bind_param($stmt_following_count, "i", $profile_user_id);
+mysqli_stmt_execute($stmt_following_count);
+$result_following_count = mysqli_stmt_get_result($stmt_following_count);
 $following_count = 0;
+
 if (mysqli_num_rows($result_following_count) > 0) {
     $row = mysqli_fetch_assoc($result_following_count);
     $following_count = $row['count'];
 }
 
 // Fetch the posts
-$sql_posts = "SELECT * FROM posts WHERE (user_id='$profile_user_id' OR (user_id='" . $_SESSION['user_id'] . "' AND visibility = 0) OR (visibility = 1) OR (visibility = 2 AND user_id IN (SELECT followee_id FROM followers WHERE follower_id = '" . $_SESSION['user_id'] . "'))) ORDER BY created_at DESC";
-$result_posts = mysqli_query($conn, $sql_posts);
+$sql_posts = "SELECT p.*, COUNT(pl.user_id) AS likes
+              FROM posts p
+              LEFT JOIN post_likes pl ON p.id = pl.post_id
+              WHERE (p.user_id=? OR (p.user_id=? AND p.visibility = 0) OR (p.visibility = 1) OR (p.visibility = 2 AND p.user_id IN (SELECT followee_id FROM followers WHERE follower_id = ?)))
+              GROUP BY p.id
+              ORDER BY p.created_at DESC";
+$stmt_posts = mysqli_prepare($conn, $sql_posts);
+mysqli_stmt_bind_param($stmt_posts, "iii", $profile_user_id, $_SESSION['user_id'], $_SESSION['user_id']);
+mysqli_stmt_execute($stmt_posts);
+$result_posts = mysqli_stmt_get_result($stmt_posts);
 $posts = array();
+
 if (mysqli_num_rows($result_posts) > 0) {
     while ($row_posts = mysqli_fetch_assoc($result_posts)) {
         // Fetch the comments for each post
         $post_id = $row_posts['id'];
-        $sql_comments = "SELECT * FROM comments WHERE post_id='$post_id'";
-        $result_comments = mysqli_query($conn, $sql_comments);
-        $comments = array();
-        if (mysqli_num_rows($result_comments) > 0) {
-            while ($row_comments = mysqli_fetch_assoc($result_comments)) {
-                $comments[] = $row_comments;
-            }
-        }
+        $comments = get_comments($conn, $post_id);
+
         $row_posts['comments'] = $comments;
         $posts[] = $row_posts;
     }
+}
+
+// Fetch the user's logo
+$sql_user_logo = "SELECT logo FROM users WHERE id = ?";
+$stmt_user_logo = mysqli_prepare($conn, $sql_user_logo);
+mysqli_stmt_bind_param($stmt_user_logo, "i", $profile_user_id);
+mysqli_stmt_execute($stmt_user_logo);
+$result_user_logo = mysqli_stmt_get_result($stmt_user_logo);
+$user_logo = '';
+
+if (mysqli_num_rows($result_user_logo) > 0) {
+    $row_user_logo = mysqli_fetch_assoc($result_user_logo);
+    $user_logo = $row_user_logo['logo'];
 }
 
 // Handle adding a post
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_post'])) {
     $postContent = $_POST['post_content'];
     $postVisibility = $_POST['post_visibility'];
+
+    // Extract hashtags from the post content
+    preg_match_all('/#\w+\b/', $postContent, $matches);
+    $hashtags = $matches[0];
 
     // Check if the post content is not empty
     if (!empty($postContent)) {
@@ -135,8 +120,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_post'])) {
         $visibility = isset($visibilityMap[$postVisibility]) ? $visibilityMap[$postVisibility] : 1;  // Default to Public if the option is not recognized
 
         // Insert the post into the database with the specified visibility
-        $sql_add_post = "INSERT INTO posts (user_id, username, content, created_at, visibility) VALUES ('$profile_user_id', '$username', '$postContent', NOW(), '$visibility')";
-        if (mysqli_query($conn, $sql_add_post)) {
+        $post_id = add_post($conn, $profile_user_id, $username, $postContent, $visibility);
+
+        if ($post_id) {
+            // Insert the hashtags into the database
+            foreach ($hashtags as $tag) {
+                $tag = strtolower($tag);
+                add_hashtag($conn, $post_id, $tag);
+            }
+
             $message = "Post added successfully!";
             // Refresh the page after adding a post to display the updated list of posts
             header("Refresh: 0");
@@ -148,58 +140,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_post'])) {
     }
 }
 
-// Handle adding a comment
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_comment'])) {
+// Handle the like request
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['like_post'])) {
     $post_id = $_POST['post_id'];
-    $comment_content = $_POST['comment_content'];
-    $user_id = $_SESSION['user_id'];
 
-    // Check if the comment content is not empty
-    if (!empty($comment_content)) {
-        // Fetch the username from the 'users' table
-        $sql_username = "SELECT username FROM users WHERE id='$user_id'";
-        $result_username = mysqli_query($conn, $sql_username);
-        if (mysqli_num_rows($result_username) > 0) {
-            $row_username = mysqli_fetch_assoc($result_username);
-            $username = $row_username['username'];
+    // Update the likes count for the post
+    $success = like_post($conn, $post_id, $_SESSION['user_id']);
 
-            // Insert the comment into the database
-            $sql_add_comment = "INSERT INTO comments (post_id, user_id, content, username, created_at) VALUES ('$post_id', '$user_id', '$comment_content', '$username', NOW())";
-            if (mysqli_query($conn, $sql_add_comment)) {
-                $message = "Comment added successfully!";
-                // Refresh the page after adding a comment to display the updated list of comments
-                header("Refresh: 0");
-            } else {
-                $error = "Error adding comment: " . mysqli_error($conn);
-            }
-        } else {
-            $error = "User not found!";
-        }
+    if ($success) {
+        // Refresh the page after liking a post to display the updated number of likes
+        header("Refresh: 0");
     } else {
-        $error = "Comment content cannot be empty!";
+        $error = "Failed to like the post.";
     }
 }
 
-// Function to calculate time ago
-function time_ago($datetime) {
-    $current_time = new DateTime();
-    $post_time = new DateTime($datetime);
-    $interval = $post_time->diff($current_time);
+// Fetch hashtags for each post
+$hashtags = array();
 
-    if ($interval->y > 0) {
-        return $interval->format("%y year" . ($interval->y > 1 ? "s" : "") . " ago");
-    } elseif ($interval->m > 0) {
-        return $interval->format("%m month" . ($interval->m > 1 ? "s" : "") . " ago");
-    } elseif ($interval->d > 0) {
-        return $interval->format("%d day" . ($interval->d > 1 ? "s" : "") . " ago");
-    } elseif ($interval->h > 0) {
-        return $interval->format("%h hour" . ($interval->h > 1 ? "s" : "") . " ago");
-    } elseif ($interval->i > 0) {
-        return $interval->format("%i minute" . ($interval->i > 1 ? "s" : "") . " ago");
-    } else {
-        return "Just now";
-    }
+foreach ($posts as &$post) {
+    $post_id = $post['id'];
+    $hashtags = get_post_hashtags($conn, $post_id);
+    $post['hashtags'] = $hashtags;
 }
+
+unset($post); // Unset the reference variable
 
 mysqli_close($conn);
 ?>
@@ -209,10 +174,8 @@ mysqli_close($conn);
 <head>
     <title>User Profile</title>
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/profile/profile_image.css">
-    <link rel="stylesheet" href="css/profile/main_body.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/profile/style.css">
     <!-- Custom CSS -->
     <style>
         /* Add your custom styles here */
@@ -225,35 +188,34 @@ mysqli_close($conn);
     <?php if (isset($error)): ?>
         <div class="alert alert-danger"><?php echo $error; ?></div>
     <?php else: ?>
+        <div class="banner-image" style="position: relative;">
+            <?php if (!empty($userLogo)): ?>
+                <div class="logo-overlay" onclick="document.getElementById('logo-form').submit();">
+                    <img src="<?php echo $userLogo; ?>" alt="Profile Logo" class="logo-image"> <?php echo $username; ?>
+                </div>
+            <?php else: ?>
+                <div class="logo-overlay" onclick="document.getElementById('logo-form').submit();">
+                    <img src="uploads/default-logo.png" alt="Default Logo" class="logo-image">
+                </div>
+            <?php endif; ?>
 
-      <div class="banner-image" style="position: relative;">
-          <?php if (!empty($userLogo)): ?>
-              <div class="logo-overlay" onclick="document.getElementById('logo-form').submit();">
-                  <img src="<?php echo $userLogo; ?>" alt="Profile Logo" class="logo-image">
-              </div>
-          <?php else: ?>
-              <div class="logo-overlay" onclick="document.getElementById('logo-form').submit();">
-                  <img src="uploads/default-logo.png" alt="Default Logo" class="logo-image">
-              </div>
-          <?php endif; ?>
-
-          <?php if (!empty($userBanner)): ?>
-              <div class="banner-overlay" onclick="document.getElementById('banner-form').submit();">
-                  <img src="<?php echo $userBanner; ?>" alt="Profile Banner" class="banner-image">
-              </div>
-          <?php else: ?>
-              <div class="banner-overlay" onclick="document.getElementById('banner-form').submit();">
-                  <img src="uploads/default-banner.png" alt="Default Banner" class="banner-image">
-              </div>
-          <?php endif; ?>
-      </div>
+            <?php if (!empty($userBanner)): ?>
+                <div class="banner-overlay" onclick="document.getElementById('banner-form').submit();">
+                    <img src="<?php echo $userBanner; ?>" alt="Profile Banner" class="banner-image">
+                </div>
+            <?php else: ?>
+                <div class="banner-overlay" onclick="document.getElementById('banner-form').submit();">
+                    <img src="uploads/default-banner.png" alt="Default Banner" class="banner-image">
+                </div>
+            <?php endif; ?>
+        </div>
 
         <div class="username">
-          <h3><?php echo $username; ?></h3>
+            <h3><?php echo $username; ?></h3>
         </div>
         <div class="follow-count">
-          <a href="followers.php?user_id=<?php echo $profile_user_id; ?>">Followers</a> (<?php echo $followers_count; ?>)
-          <a href="following.php?user_id=<?php echo $profile_user_id; ?>">Following</a> (<?php echo $following_count; ?>)
+            <a href="followers.php?user_id=<?php echo $profile_user_id; ?>">Followers</a> (<?php echo $followers_count; ?>)
+            <a href="following.php?user_id=<?php echo $profile_user_id; ?>">Following</a> (<?php echo $following_count; ?>)
         </div>
 
         <h3>Your Posts</h3>
@@ -280,64 +242,82 @@ mysqli_close($conn);
         <h3>Your Wall</h3>
 
         <?php if (count($posts) > 0): ?>
-          <?php foreach ($posts as $post): ?>
-              <div class="card mb-3">
-                  <div class="card-body">
-                      <div class="d-flex justify-content-between align-items-center">
-                          <h5 class="card-title mb-0">
-                              <?php echo htmlspecialchars($post['username']); ?>
-                              <small><?php echo time_ago($post['created_at']); ?></small>
-                          </h5>
-                          <span class="visibility-info">
-                              <?php
-                                  $visibilityLabel = "";
-                                  switch ($post['visibility']) {
-                                      case 0:
-                                          $visibilityLabel = "Only Me";
-                                          break;
-                                      case 1:
-                                          $visibilityLabel = "Public";
-                                          break;
-                                      case 2:
-                                          $visibilityLabel = "Followers Only";
-                                          break;
-                                      default:
-                                          $visibilityLabel = "Unknown";
-                                          break;
-                                  }
-                                  echo "(" . $visibilityLabel . ")";
-                              ?>
-                          </span>
-                          <?php if ($post['user_id'] === $_SESSION['user_id']): ?>
-                              <div>
-                                  <a href="edit_post.php?post_id=<?php echo $post['id']; ?>">Edit Post</a>
-                                  <a href="delete_post.php?post_id=<?php echo $post['id']; ?>" onclick="return confirm('Are you sure you want to delete this post?')">Delete Post</a>
-                              </div>
-                          <?php endif; ?>
-                      </div>
-                      <p class="card-text"><?php echo htmlspecialchars($post['content']); ?></p>
-                  </div>
+            <?php foreach ($posts as $post): ?>
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                              <?php if (!empty($post['logo'])): ?>
+                                  <img src="<?php echo $post['logo']; ?>" alt="Profile Logo" class="user-logo">
+                              <?php endif; ?>
+                                <?php echo htmlspecialchars($post['username']); ?>
+                                <small><?php echo time_ago($post['created_at']); ?></small>
+                            </h5>
+                            <span class="visibility-info">
+                                <?php
+                                    $visibilityLabel = "";
+                                    switch ($post['visibility']) {
+                                        case 0:
+                                            $visibilityLabel = "Only Me";
+                                            break;
+                                        case 1:
+                                            $visibilityLabel = "Public";
+                                            break;
+                                        case 2:
+                                            $visibilityLabel = "Followers Only";
+                                            break;
+                                        default:
+                                            $visibilityLabel = "Unknown";
+                                            break;
+                                    }
+                                    echo "(" . $visibilityLabel . ")";
+                                ?>
+                            </span>
+                            <?php if ($post['user_id'] == $_SESSION['user_id']): ?>
+                                <div>
+                                    <a href="edit_post.php?post_id=<?php echo $post['id']; ?>">Edit Post</a>
+                                    <a href="delete_post.php?post_id=<?php echo $post['id']; ?>" onclick="return confirm('Are you sure you want to delete this post?')">Delete Post</a>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <p class="card-text"><?php echo htmlspecialchars($post['content']); ?></p>
+                    </div>
+                    <?php if (isset($post['hashtags'])): ?>
+                        <div class="hashtags">
+                            <?php foreach ($post['hashtags'] as $hashtag): ?>
+                                <a href="hashtag.php?tag=<?php echo urlencode($hashtag['tag']); ?>">
+                                    <span class="hashtag"><?php echo htmlspecialchars($hashtag['tag']); ?></span>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
                     <?php if (!empty($post['comments'])): ?>
                         <div class="card-footer">
                             <h6>Comments:</h6>
                             <?php foreach ($post['comments'] as $comment): ?>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <?php if ($comment['user_id'] === $_SESSION['user_id']): ?>
-                                        <div>
-                                            <a href="edit_comment.php?comment_id=<?php echo $comment['id']; ?>">Edit Comment</a>
-                                            <a href="delete_comment.php?comment_id=<?php echo $comment['id']; ?>" onclick="return confirm('Are you sure you want to delete this comment?')">Delete Comment</a>
-                                        </div>
-                                    <?php endif; ?>
-                                    <p class="mb-0">
-                                        <?php echo htmlspecialchars($comment['content']); ?>
-                                        <small>by <?php echo htmlspecialchars($comment['username']); ?>, <?php echo time_ago($comment['created_at']); ?></small>
-                                    </p>
+                                <div class="card comment-card">
+                                    <div class="card-header">
+                                        <?php if (!empty($comment['logo'])): ?>
+                                            <img src="<?php echo $comment['logo']; ?>" alt="Profile Logo" class="user-logo">
+                                        <?php endif; ?>
+                                        <strong><?php echo htmlspecialchars($comment['username']); ?></strong>
+                                        <small><?php echo time_ago($comment['created_at']); ?></small>
+                                        <?php if ($comment['user_id'] == $_SESSION['user_id']): ?>
+                                            <div>
+                                                <a href="edit_comment.php?comment_id=<?php echo $comment['id']; ?>">Edit Comment</a>
+                                                <a href="delete_comment.php?comment_id=<?php echo $comment['id']; ?>" onclick="return confirm('Are you sure you want to delete this comment?')">Delete Comment</a>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="card-text"><?php echo htmlspecialchars($comment['content']); ?></p>
+                                    </div>
                                 </div>
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
                     <div class="card-footer">
-                        <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST">
+                        <form action="add_comment.php" method="POST">
                             <input type="hidden" name="post_id" value="<?php echo $post['id']; ?>">
                             <div class="form-group">
                                 <textarea class="form-control" name="comment_content" rows="1" placeholder="Write a comment..." required></textarea>
@@ -348,14 +328,25 @@ mysqli_close($conn);
                 </div>
             <?php endforeach; ?>
         <?php else: ?>
-            <p>No posts to display on your wall.</p>
+            <p>No posts found.</p>
         <?php endif; ?>
+
+        <form id="logo-form" action="profile_upload.php" method="POST">
+            <input type="hidden" name="type" value="logo">
+        </form>
+
+        <form id="banner-form" action="profile_upload.php" method="POST">
+            <input type="hidden" name="type" value="banner">
+        </form>
+
     <?php endif; ?>
 </div>
-<!-- jQuery, Popper.js, and Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+
+<!-- Bootstrap CSS -->
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>

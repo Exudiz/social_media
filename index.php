@@ -1,6 +1,4 @@
-//index.php
 <?php
-session_start();
 require_once 'config.php';
 
 // Check if the user is logged in
@@ -37,7 +35,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register'])) {
         if (mysqli_query($conn, $sql)) {
             $message = "Registration successful!";
             $_SESSION['user_id'] = mysqli_insert_id($conn); // Store the new user ID in the session
-            header("Location: public_wall.php");
+            header("Location: index.php");
             exit();
         } else {
             $error = "Error registering user: " . mysqli_error($conn);
@@ -62,7 +60,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login'])) {
             // Login successful, store user ID and username in session
             $_SESSION['user_id'] = $row['id'];
             $_SESSION['username'] = $row['username'];
-            header("Location: public_wall.php");
+            header("Location: index.php");
             exit();
         } else {
             $error = "Invalid email/username or password!";
@@ -157,8 +155,21 @@ mysqli_close($conn);
 <?php } else { ?>
     <!-- Public wall content -->
     <div class="container">
-        <h2>Public Wall</h2>
-        <!-- Add public wall content code here -->
+        <?php if (!empty($posts)) { ?>
+            <h2>Public Wall</h2>
+            <?php foreach ($posts as $post) { ?>
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title"><?php echo $post['username']; ?></h5>
+                        <p class="card-text"><?php echo $post['content']; ?></p>
+                        <p class="card-text"><small><?php echo $post['created_at']; ?></small></p>
+                        <a href="profile.php?user_id=<?php echo $post['user_id']; ?>">View Profile</a>
+                    </div>
+                </div>
+            <?php } ?>
+        <?php } else { ?>
+            <h2>No posts to display on the public wall.</h2>
+        <?php } ?>
     </div>
 <?php } ?>
 
@@ -190,5 +201,6 @@ mysqli_close($conn);
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+<script src="activity.js"></script>
 </body>
 </html>

@@ -1,5 +1,4 @@
 <?php
-session_start();
 require_once 'config.php';
 
 // Check if the user is logged in
@@ -76,7 +75,8 @@ mysqli_close($conn);
         <div class="alert alert-success"><?php echo $message; ?></div>
         <?php
         $user_id = $_SESSION['user_id'];
-        header("Refresh: 3; URL=profile.php?user_id=$user_id"); // Redirect after 3 seconds to profile.php
+        echo '<meta http-equiv="refresh" content="3; URL=profile.php?user_id='.$user_id.'">';
+        exit();
         ?>
     <?php } ?>
     <?php if (!isset($message)) { ?>

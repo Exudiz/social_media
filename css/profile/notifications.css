@@ -1,0 +1,28 @@
+.notification {
+    background-color: #f0f0f0;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.notification p {
+    margin: 0;
+}
+
+.notification.read {
+    background-color: #e0e0e0;
+}
+
+.notification.unread {
+    background-color: #f0f0f0;
+    font-weight: bold;
+}
+
+.notification a {
+    margin-left: 10px;
+    color: blue;
+    text-decoration: none;
+}
+
+.notification a:hover {
+    text-decoration: underline;
+}

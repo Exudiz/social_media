@@ -1,6 +1,7 @@
 <?php
-session_start();
 require_once 'config.php';
+require_once 'functions.php';
+
 
 // Check if the user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -48,6 +49,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_post'])) {
         $message = "Post updated successfully!";
         // Redirect the user back to profile.php after 3 seconds
         header("Refresh: 3; URL=profile.php");
+
+        // After post is edited
+        insertUserActivity($_SESSION['user_id'], "Post Edit", "Edited a post with ID: " . $post_id);
     } else {
         $error = "Error updating post: " . mysqli_error($conn);
     }

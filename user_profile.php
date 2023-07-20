@@ -1,6 +1,128 @@
 <?php
-session_start();
 require_once 'config.php';
+
+// Function to establish a database connection
+function connectDatabase() {
+    global $dbConfig;
+
+    $conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
+    if (!$conn) {
+        die("Connection failed: " . mysqli_connect_error());
+    }
+
+    return $conn;
+}
+
+// Function to validate and sanitize user input
+function sanitize_input($input) {
+    return htmlspecialchars(trim($input));
+}
+
+// Function to check if the logged-in user is following the profile user
+function check_follow_status($follower_id, $followee_id) {
+    $conn = connectDatabase();
+
+    $sql_check_follow = "SELECT COUNT(*) AS count FROM followers WHERE follower_id = ? AND followee_id = ?";
+    $stmt_check_follow = mysqli_prepare($conn, $sql_check_follow);
+    mysqli_stmt_bind_param($stmt_check_follow, "ii", $follower_id, $followee_id);
+    mysqli_stmt_execute($stmt_check_follow);
+    $result_check_follow = mysqli_stmt_get_result($stmt_check_follow);
+
+    if ($result_check_follow) {
+        $row_check_follow = mysqli_fetch_assoc($result_check_follow);
+        mysqli_close($conn);
+        return ($row_check_follow['count'] > 0);
+    }
+
+    mysqli_close($conn);
+    return false;
+}
+
+// Function to get the username by user ID
+function get_username_by_id($user_id) {
+    $conn = connectDatabase();
+
+    $sql_get_username = "SELECT username FROM users WHERE id = ?";
+    $stmt_get_username = mysqli_prepare($conn, $sql_get_username);
+    mysqli_stmt_bind_param($stmt_get_username, "i", $user_id);
+    mysqli_stmt_execute($stmt_get_username);
+    $result_get_username = mysqli_stmt_get_result($stmt_get_username);
+
+    if ($result_get_username && mysqli_num_rows($result_get_username) > 0) {
+        $row_get_username = mysqli_fetch_assoc($result_get_username);
+        return $row_get_username['username'];
+    }
+
+    return null;
+}
+
+// Function to calculate time ago
+function time_ago($datetime) {
+    $current_time = new DateTime();
+    $post_time = new DateTime($datetime);
+    $interval = $post_time->diff($current_time);
+
+    if ($interval->y > 0) {
+        return $interval->format("%y year" . ($interval->y > 1 ? "s" : "") . " ago");
+    } elseif ($interval->m > 0) {
+        return $interval->format("%m month" . ($interval->m > 1 ? "s" : "") . " ago");
+    } elseif ($interval->d > 0) {
+        return $interval->format("%d day" . ($interval->d > 1 ? "s" : "") . " ago");
+    } elseif ($interval->h > 0) {
+        return $interval->format("%h hour" . ($interval->h > 1 ? "s" : "") . " ago");
+    } elseif ($interval->i > 0) {
+        return $interval->format("%i minute" . ($interval->i > 1 ? "s" : "") . " ago");
+    } else {
+        return "Just now";
+    }
+}
+
+// Function to get the count of a specific hashtag
+function get_hashtag_count($tag) {
+    $conn = connectDatabase();
+
+    $sql_hashtag_count = "SELECT COUNT(*) AS count FROM hashtags WHERE tag = ?";
+    $stmt_hashtag_count = mysqli_prepare($conn, $sql_hashtag_count);
+    mysqli_stmt_bind_param($stmt_hashtag_count, "s", $tag);
+    mysqli_stmt_execute($stmt_hashtag_count);
+    $result_hashtag_count = mysqli_stmt_get_result($stmt_hashtag_count);
+
+    if ($result_hashtag_count && mysqli_num_rows($result_hashtag_count) > 0) {
+        $row_hashtag_count = mysqli_fetch_assoc($result_hashtag_count);
+        return $row_hashtag_count['count'];
+    }
+
+    return 0;
+}
+
+// Function to get hashtags for each post
+function get_post_hashtags($post_id) {
+    $conn = connectDatabase();
+
+    $sql_hashtags = "SELECT * FROM hashtags WHERE post_id = ?";
+    $stmt_hashtags = mysqli_prepare($conn, $sql_hashtags);
+    mysqli_stmt_bind_param($stmt_hashtags, "i", $post_id);
+    mysqli_stmt_execute($stmt_hashtags);
+    $result_hashtags = mysqli_stmt_get_result($stmt_hashtags);
+
+    $hashtags = array();
+
+    if ($result_hashtags) {
+        while ($row_hashtags = mysqli_fetch_assoc($result_hashtags)) {
+            $hashtags[] = $row_hashtags['tag'];
+        }
+        mysqli_free_result($result_hashtags);
+    } else {
+        $error = "Error retrieving hashtags for post ID: $post_id - " . mysqli_error($conn);
+    }
+
+    mysqli_close($conn);
+
+    return $hashtags;
+}
+
+// Database connection
+$conn = connectDatabase();
 
 // Check if the user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -8,116 +130,124 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-// Check if the user ID is provided in the URL
-if (!isset($_GET['user_id'])) {
-    $profile_user_id = $_SESSION['user_id'];
-} else {
-    $profile_user_id = $_GET['user_id'];
-}
+// Validate and sanitize the user ID
+$profile_user_id = isset($_GET['user_id']) ? (int)$_GET['user_id'] : $_SESSION['user_id'];
 
-// Database connection
-$conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
-if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
-}
+// Fetch user's profile information from the database
+$sql_user = "SELECT * FROM users WHERE id = ?";
+$stmt_user = mysqli_prepare($conn, $sql_user);
+mysqli_stmt_bind_param($stmt_user, "i", $profile_user_id);
+mysqli_stmt_execute($stmt_user);
+$result_user = mysqli_stmt_get_result($stmt_user);
 
-// Fetch user profile information
-$sql = "SELECT * FROM users WHERE id='$profile_user_id'";
-$result = mysqli_query($conn, $sql);
-if (mysqli_num_rows($result) > 0) {
-    $row = mysqli_fetch_assoc($result);
-    $username = $row['username'];
+if (mysqli_num_rows($result_user) > 0) {
+    $user = mysqli_fetch_assoc($result_user);
+    $username = get_username_by_id($profile_user_id); // Use the function here
+    $userLogo = $user['logo'];
+    $userBanner = $user['banner'];
 } else {
     $error = "User profile not found!";
 }
 
-// Fetch user's posts from the database
-$sql_posts = "SELECT * FROM posts WHERE user_id = '$profile_user_id' ORDER BY created_at DESC";
-$result_posts = mysqli_query($conn, $sql_posts);
-$posts = [];
-if (mysqli_num_rows($result_posts) > 0) {
-    while ($row = mysqli_fetch_assoc($result_posts)) {
-        $posts[] = $row;
-    }
-}
-
 // Fetch followers count
-$sql_followers_count = "SELECT COUNT(*) AS count FROM followers WHERE followee_id = '$profile_user_id'";
-$result_followers_count = mysqli_query($conn, $sql_followers_count);
+$sql_followers_count = "SELECT COUNT(*) AS count FROM followers WHERE followee_id = ?";
+$stmt_followers_count = mysqli_prepare($conn, $sql_followers_count);
+mysqli_stmt_bind_param($stmt_followers_count, "i", $profile_user_id);
+mysqli_stmt_execute($stmt_followers_count);
+$result_followers_count = mysqli_stmt_get_result($stmt_followers_count);
 $followers_count = 0;
+
 if (mysqli_num_rows($result_followers_count) > 0) {
     $row = mysqli_fetch_assoc($result_followers_count);
     $followers_count = $row['count'];
 }
 
 // Fetch following count
-$sql_following_count = "SELECT COUNT(*) AS count FROM followers WHERE follower_id = '$profile_user_id'";
-$result_following_count = mysqli_query($conn, $sql_following_count);
+$sql_following_count = "SELECT COUNT(*) AS count FROM followers WHERE follower_id = ?";
+$stmt_following_count = mysqli_prepare($conn, $sql_following_count);
+mysqli_stmt_bind_param($stmt_following_count, "i", $profile_user_id);
+mysqli_stmt_execute($stmt_following_count);
+$result_following_count = mysqli_stmt_get_result($stmt_following_count);
 $following_count = 0;
+
 if (mysqli_num_rows($result_following_count) > 0) {
     $row = mysqli_fetch_assoc($result_following_count);
     $following_count = $row['count'];
 }
 
-// Handle adding a post
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_post'])) {
-    $postContent = $_POST['post_content'];
+// Fetch the posts
+$sql_posts = "SELECT * FROM posts WHERE (user_id=? OR (user_id=? AND visibility = 0) OR (visibility = 1) OR (visibility = 2 AND user_id IN (SELECT followee_id FROM followers WHERE follower_id = ?))) ORDER BY created_at DESC";
+$stmt_posts = mysqli_prepare($conn, $sql_posts);
+mysqli_stmt_bind_param($stmt_posts, "iii", $profile_user_id, $_SESSION['user_id'], $_SESSION['user_id']);
+mysqli_stmt_execute($stmt_posts);
+$result_posts = mysqli_stmt_get_result($stmt_posts);
+$posts = array();
 
-    // Insert the post into the database
-    $sql_add_post = "INSERT INTO posts (user_id, username, content) VALUES ('$profile_user_id', '$username', '$postContent')";
-    if (mysqli_query($conn, $sql_add_post)) {
-        $message = "Post added successfully!";
-        // Refresh the page after adding a post to display the updated list of posts
-        header("Refresh: 0");
-    } else {
-        $error = "Error adding post: " . mysqli_error($conn);
-    }
-}
+if (mysqli_num_rows($result_posts) > 0) {
+    while ($row_posts = mysqli_fetch_assoc($result_posts)) {
+        // Fetch the username of the post author
+        $post_author_username = get_username_by_id($row_posts['user_id']);
+        $row_posts['username'] = $post_author_username;
 
-// Handle adding a comment
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add_comment'])) {
-    $commentContent = $_POST['comment_content'];
-    $postId = $_POST['post_id'];
+        // Fetch the comments for each post
+        $post_id = $row_posts['id'];
+        $sql_comments = "SELECT * FROM comments WHERE post_id=?";
+        $stmt_comments = mysqli_prepare($conn, $sql_comments);
+        mysqli_stmt_bind_param($stmt_comments, "i", $post_id);
+        mysqli_stmt_execute($stmt_comments);
+        $result_comments = mysqli_stmt_get_result($stmt_comments);
+        $comments = array();
 
-    // Insert the comment into the database
-    $sql_add_comment = "INSERT INTO comments (post_id, user_id, username, content) VALUES ('$postId', '$profile_user_id', '$username', '$commentContent')";
-    if (mysqli_query($conn, $sql_add_comment)) {
-        $message = "Comment added successfully!";
-        // Refresh the page after adding a comment to display the updated list of comments
-        header("Refresh: 0");
-    } else {
-        $error = "Error adding comment: " . mysqli_error($conn);
-    }
-}
+        if (mysqli_num_rows($result_comments) > 0) {
+            while ($row_comments = mysqli_fetch_assoc($result_comments)) {
+                // Fetch the username of the comment author
+                $comment_author_username = get_username_by_id($row_comments['user_id']);
+                $row_comments['username'] = $comment_author_username;
 
-// Follow/unfollow action
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['follow_action'])) {
-    $follower_id = $_SESSION['user_id'];
-    $followee_id = $_POST['followee_id'];
+                // Fetch the replies for each comment
+                $comment_id = $row_comments['id'];
+                $sql_replies = "SELECT * FROM replies WHERE comment_id=?";
+                $stmt_replies = mysqli_prepare($conn, $sql_replies);
+                mysqli_stmt_bind_param($stmt_replies, "i", $comment_id);
+                mysqli_stmt_execute($stmt_replies);
+                $result_replies = mysqli_stmt_get_result($stmt_replies);
+                $replies = array();
 
-    // Check if the user is already following the profile user
-    $sql_check_follow = "SELECT * FROM followers WHERE follower_id='$follower_id' AND followee_id='$followee_id'";
-    $result_check_follow = mysqli_query($conn, $sql_check_follow);
-    if (mysqli_num_rows($result_check_follow) > 0) {
-        // User is already following, unfollow
-        $sql_unfollow = "DELETE FROM followers WHERE follower_id='$follower_id' AND followee_id='$followee_id'";
-        if (mysqli_query($conn, $sql_unfollow)) {
-            $message = "You have unfollowed the user.";
-            header("Refresh: 0");
-        } else {
-            $error = "Error unfollowing user: " . mysqli_error($conn);
+                if (mysqli_num_rows($result_replies) > 0) {
+                    while ($row_replies = mysqli_fetch_assoc($result_replies)) {
+                        // Fetch the username of the reply author
+                        $reply_author_username = get_username_by_id($row_replies['user_id']);
+                        $row_replies['username'] = $reply_author_username;
+
+                        $replies[] = $row_replies;
+                    }
+                }
+
+                $row_comments['replies'] = $replies;
+                $comments[] = $row_comments;
+            }
         }
-    } else {
-        // User is not following, follow
-        $sql_follow = "INSERT INTO followers (follower_id, followee_id) VALUES ('$follower_id', '$followee_id')";
-        if (mysqli_query($conn, $sql_follow)) {
-            $message = "You are now following the user.";
-            header("Refresh: 0");
-        } else {
-            $error = "Error following user: " . mysqli_error($conn);
-        }
+
+        $row_posts['comments'] = $comments;
+        $posts[] = $row_posts;
     }
 }
+
+// Function to get the visibility label
+function get_visibility_label($visibility) {
+    switch ($visibility) {
+        case 0:
+            return 'Only Me';
+        case 1:
+            return 'Public';
+        case 2:
+            return 'Followers Only';
+        default:
+            return 'Unknown';
+    }
+}
+
+mysqli_close($conn);
 ?>
 
 <!DOCTYPE html>
@@ -126,102 +256,116 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['follow_action'])) {
     <title>User Profile</title>
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/profile/profile_image.css">
+    <link rel="stylesheet" href="css/profile/main_body.css">
     <!-- Custom CSS -->
     <style>
         /* Add your custom styles here */
+        .hashtag {
+            cursor: pointer;
+            color: blue;
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
-<?php include 'header.php'; ?>
+    <?php include 'header.php'; ?>
 
-<div class="container">
-    <h2>User Profile: <?php echo $username; ?></h2>
-    <?php if (isset($error)) { ?>
-        <div class="alert alert-danger"><?php echo $error; ?></div>
-    <?php } else { ?>
-        <a href="followers.php?user_id=<?php echo $profile_user_id; ?>">View Followers</a> (<?php echo $followers_count; ?>)
-        <a href="following.php?user_id=<?php echo $profile_user_id; ?>">View Following</a> (<?php echo $following_count; ?>)
-
-        <?php
-        // Check if the user is already following the profile user
-        $follower_id = $_SESSION['user_id'];
-        $sql_check_follow = "SELECT * FROM followers WHERE follower_id='$follower_id' AND followee_id='$profile_user_id'";
-        $result_check_follow = mysqli_query($conn, $sql_check_follow);
-        $already_following = mysqli_num_rows($result_check_follow) > 0;
-        ?>
-
-        <?php if (!$already_following) { ?>
-            <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST">
-                <input type="hidden" name="followee_id" value="<?php echo $profile_user_id; ?>">
-                <button type="submit" class="btn btn-primary" name="follow_action">Follow</button>
-            </form>
-        <?php } else { ?>
-            <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST">
-                <input type="hidden" name="followee_id" value="<?php echo $profile_user_id; ?>">
-                <button type="submit" class="btn btn-secondary" name="follow_action">Unfollow</button>
-            </form>
-        <?php } ?>
-
-        <h3>Your Posts</h3>
-        <?php if (isset($message)) { ?>
-            <div class="alert alert-success"><?php echo $message; ?></div>
-        <?php } ?>
-        <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"] . "?user_id=" . $profile_user_id); ?>" method="POST">
-            <div class="form-group">
-                <textarea class="form-control" name="post_content" rows="3" placeholder="Write something..."></textarea>
+    <div class="container">
+        <?php if (isset($error)): ?>
+            <div class="alert alert-danger"><?php echo $error; ?></div>
+        <?php else: ?>
+            <div class="banner-image" style="position: relative;">
+                <?php if (!empty($userLogo)): ?>
+                    <!-- Rest of the code for displaying profile image and banner -->
+                <?php endif; ?>
             </div>
-            <button type="submit" class="btn btn-primary" name="add_post">Add Post</button>
-        </form>
-        <h3>Your Wall</h3>
-        <?php if (!empty($posts)) { ?>
-            <?php foreach ($posts as $post) { ?>
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <?php echo $post['username']; ?>
-                            <small><?php echo $post['created_at']; ?></small>
-                        </h5>
-                        <p class="card-text"><?php echo $post['content']; ?></p>
-                        <?php if ($post['user_id'] === $_SESSION['user_id']) { ?>
-                            <div>
-                                <a href="#" class="edit-post" data-post-id="<?php echo $post['id']; ?>">Edit</a>
-                                <a href="#" class="delete-post" data-post-id="<?php echo $post['id']; ?>">Delete</a>
-                            </div>
-                        <?php } ?>
-                        <div class="comments">
-                            <?php
-                            // Fetch the comments for the current post
-                            $sql_comments = "SELECT * FROM comments WHERE post_id = '$post[id]' ORDER BY created_at ASC";
-                            $result_comments = mysqli_query($conn, $sql_comments);
-                            if (mysqli_num_rows($result_comments) > 0) {
-                                while ($row = mysqli_fetch_assoc($result_comments)) {
-                                    echo '<div class="comment">';
-                                    echo '<p><strong>'.$row['username'].'</strong>: '.$row['content'].'</p>';
-                                    echo '</div>';
-                                }
-                            } else {
-                                echo '<p>No comments yet.</p>';
-                            }
-                            ?>
-                        </div>
-                        <form class="comment-form" action="<?php echo $_SERVER["PHP_SELF"]; ?>" method="POST">
-                            <div class="form-group">
-                                <input type="hidden" name="post_id" value="<?php echo $post['id']; ?>">
-                                <input type="text" class="form-control" name="comment_content" placeholder="Write a comment...">
-                            </div>
-                            <button type="submit" class="btn btn-primary" name="add_comment">Comment</button>
-                        </form>
+
+            <div class="username">
+                <h3><?php echo $username; ?></h3>
+            </div>
+            <div class="follow-count">
+                <?php if ($profile_user_id !== $_SESSION['user_id']): ?>
+                    <?php if (check_follow_status($_SESSION['user_id'], $profile_user_id)): ?>
+                        <a href="unfollow.php?user_id=<?php echo $profile_user_id; ?>">Unfollow</a>
+                    <?php else: ?>
+                        <a href="follow.php?user_id=<?php echo $profile_user_id; ?>">Follow</a>
+                    <?php endif; ?>
+                <?php endif; ?>
+                <span>Followers (<?php echo $followers_count; ?>)</span>
+                <?php if ($profile_user_id === $_SESSION['user_id']): ?>
+                    <span>Following (<?php echo $following_count; ?>)</span>
+                <?php endif; ?>
+            </div>
+
+            <h3>Your Posts</h3>
+
+            <?php if (isset($message)): ?>
+                <div class="alert alert-success"><?php echo $message; ?></div>
+            <?php endif; ?>
+
+            <?php if ($profile_user_id === $_SESSION['user_id']): ?>
+                <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"] . "?user_id=". $profile_user_id . "&tab=posts"); ?>" method="POST">
+                    <div class="form-group">
+                        <textarea class="form-control" name="post_content" rows="3" placeholder="Write something..." required></textarea>
                     </div>
-                </div>
-            <?php } ?>
-        <?php } else { ?>
-            <p>No posts to display on your wall.</p>
-        <?php } ?>
-    <?php } ?>
-</div>
-<!-- jQuery, Popper.js, and Bootstrap JS -->
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+                    <input type="hidden" name="post_visibility" value="2"> <!-- Always set to Followers Only -->
+                    <button type="submit" class="btn btn-primary" name="add_post">Add Post</button>
+                </form>
+            <?php endif; ?>
+
+            <h3>Your Wall</h3>
+
+            <?php if (count($posts) > 0): ?>
+                <?php foreach ($posts as $post): ?>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <p class="card-text"><?php echo $post['content']; ?></p>
+                            <p class="card-text">
+                                <?php if (!empty($post['hashtags'])): ?>
+                                    <?php foreach ($post['hashtags'] as $tag): ?>
+                                        <span class="hashtag" onclick="searchHashtag('<?php echo urlencode($tag); ?>')"><?php echo $tag; ?> (<?php echo get_hashtag_count($tag); ?>)</span>&nbsp;
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </p>
+                            <p class="card-text"><small class="text-muted"><?php echo time_ago($post['created_at']); ?></small></p>
+                            <?php if ($profile_user_id === $_SESSION['user_id']): ?>
+                                <p class="card-text"><small class="text-muted">Visibility: <?php echo get_visibility_label($post['visibility']); ?></small></p>
+                            <?php endif; ?>
+                            <?php if (!empty($post['comments'])): ?>
+                                <div class="post-comments">
+                                    <?php foreach ($post['comments'] as $comment): ?>
+                                        <div class="comment">
+                                            <span class="comment-username"><?php echo $comment['username']; ?>:</span>
+                                            <span class="comment-content"><?php echo nl2br(sanitize_input($comment['content'])); ?></span>
+                                            <?php if (!empty($comment['replies'])): ?>
+                                                <div class="comment-replies">
+                                                    <?php foreach ($comment['replies'] as $reply): ?>
+                                                        <div class="reply">
+                                                            <span class="reply-username"><?php echo $reply['username']; ?>:</span>
+                                                            <span class="reply-content"><?php echo nl2br(sanitize_input($reply['content'])); ?></span>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
+
+    <!-- Custom JavaScript -->
+    <script>
+        // Function to handle hashtag search
+        function searchHashtag(tag) {
+            // You can implement the hashtag search functionality here
+            console.log('Searching for hashtag:', tag);
+        }
+    </script>
 </body>
 </html>
