@@ -1,11 +1,6 @@
 <?php
-require_once 'config.php';
-
-// Check if the user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
 
 // Function to connect to the database
 function connectToDatabase() {

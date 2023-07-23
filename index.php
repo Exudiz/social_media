@@ -1,87 +1,64 @@
 <?php
-require_once 'config.php';
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
+require_once 'utils/ip.php';
+require_once 'utils/signup_login.php';
 
-// Check if the user is logged in
-if (isset($_SESSION['user_id'])) {
-    if (basename($_SERVER['PHP_SELF']) !== 'index.php') {
-        header("Location: index.php");
-        exit();
-    }
-}
-// Database connection
-$conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
-if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
-}
+// Initialize $profile_user_id variable to avoid undefined variable warnings
+$profile_user_id = null;
 
-// Handle user registration
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register'])) {
-    $email = $_POST['email'];
-    $username = $_POST['username'];
-    $password = $_POST['password'];
-    $confirmPassword = $_POST['confirm_password'];
-
-    // Check if email or username is already taken
-    $sql = "SELECT * FROM users WHERE email='$email' OR username='$username'";
-    $result = mysqli_query($conn, $sql);
-    if (mysqli_num_rows($result) > 0) {
-        $error = "Email or username already taken!";
-    } elseif ($password !== $confirmPassword) {
-        $error = "Password and confirm password do not match!";
+// Check if the user ID is provided in the URL
+if (!isset($_GET['user_id'])) {
+    if (isset($_SESSION['user_id'])) {
+        $profile_user_id = $_SESSION['user_id'];
     } else {
-        // Insert new user into the database
-        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        $sql = "INSERT INTO users (email, username, password) VALUES ('$email', '$username', '$hashedPassword')";
-        if (mysqli_query($conn, $sql)) {
-            $message = "Registration successful!";
-            $_SESSION['user_id'] = mysqli_insert_id($conn); // Store the new user ID in the session
-            header("Location: index.php");
-            exit();
-        } else {
-            $error = "Error registering user: " . mysqli_error($conn);
-        }
+        // Handle the case when 'user_id' is not set in the session
+        // For example, redirect to the login page or display an error message.
+        // You can also set a default user ID here if applicable.
     }
+} else {
+    $profile_user_id = $_GET['user_id'];
 }
 
-// Handle user login
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login'])) {
-    $emailOrUsername = $_POST['email_or_username'];
-    $password = $_POST['password'];
+// Database connection
+$conn = get_db_connection();
 
-    // Check if the entered email/username and password match
-    $sql = "SELECT * FROM users WHERE (email='$emailOrUsername' OR username='$emailOrUsername')";
+// Fetch user profile information
+$username = ''; // Initialize $username variable
+if (isset($_SESSION['user_row'])) {
+    $row = $_SESSION['user_row'];
+    if (isset($row['username'])) {
+        $username = $row['username'];
+    } else {
+        $error = "Username not found!";
+    }
+} else {
+    $sql = "SELECT * FROM users WHERE id='$profile_user_id'";
     $result = mysqli_query($conn, $sql);
     if (mysqli_num_rows($result) > 0) {
         $row = mysqli_fetch_assoc($result);
-        $storedPassword = $row['password'];
-
-        // Verify the password
-        if (password_verify($password, $storedPassword)) {
-            // Login successful, store user ID and username in session
-            $_SESSION['user_id'] = $row['id'];
-            $_SESSION['username'] = $row['username'];
-            header("Location: index.php");
-            exit();
+        $_SESSION['user_row'] = $row;
+        if (isset($row['username'])) {
+            $username = $row['username'];
         } else {
-            $error = "Invalid email/username or password!";
+            $error = "Username not found!";
         }
     } else {
-        $error = "Invalid email/username or password!";
+        $error = "User profile not found!";
     }
 }
 
-// Handle forgot password
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['forgot_password'])) {
-    $email = $_POST['email'];
-
-    // Check if the email exists in the database
-    $sql = "SELECT * FROM users WHERE email='$email'";
-    $result = mysqli_query($conn, $sql);
-    if (mysqli_num_rows($result) > 0) {
-        // Send password reset instructions to the user's email
-        $message = "Instructions to reset your password have been sent to your email.";
-    } else {
-        $error = "Invalid email address!";
+// Fetch user's information
+$userInfo = array();
+if (isset($_SESSION['user_info'])) {
+    $userInfo = $_SESSION['user_info'];
+} else {
+    $sql_user_info = "SELECT * FROM users WHERE id='$profile_user_id'";
+    $result_user_info = mysqli_query($conn, $sql_user_info);
+    if (mysqli_num_rows($result_user_info) > 0) {
+        $row_user_info = mysqli_fetch_assoc($result_user_info);
+        $userInfo = $row_user_info;
+        $_SESSION['user_info'] = $userInfo;
     }
 }
 
@@ -201,6 +178,6 @@ mysqli_close($conn);
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
-<script src="activity.js"></script>
+<script src="js/activity.js"></script>
 </body>
 </html>

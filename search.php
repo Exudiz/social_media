@@ -1,27 +1,9 @@
 <?php
-require_once 'config.php';
-
-// Check if the user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
 
 // Database connection
-$conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
-if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
-}
-
-// Create the search_history table if it doesn't exist
-$sql_create_table = "CREATE TABLE IF NOT EXISTS search_history (
-  id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  user_id INT(11) UNSIGNED NOT NULL,
-  search_term VARCHAR(255) NOT NULL,
-  search_date DATETIME NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-)";
-mysqli_query($conn, $sql_create_table);
+$conn = get_db_connection();
 
 // Search functionality
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['search'])) {

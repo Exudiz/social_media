@@ -1,26 +1,14 @@
 <?php
-// unfollow.php
-
-// Include the necessary files
 require_once 'config.php';
-
-// Check if the user is logged in
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
+require_once 'functions.php';
 
 // Check if the user_id parameter is present in the URL
 if (isset($_GET['user_id'])) {
     $followee_id = $_GET['user_id'];
     $follower_id = $_SESSION['user_id'];
 
-    // Create a new database connection
-    $conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
-    if (!$conn) {
-        die("Connection failed: " . mysqli_connect_error());
-    }
+    // Database connection
+    $conn = get_db_connection();
 
     // Check if the followee-follower relationship exists in the database
     $sql_check_follow = "SELECT * FROM followers WHERE follower_id = ? AND followee_id = ?";

@@ -1,11 +1,7 @@
 <?php
-require_once 'config.php';
-
-// Check if the user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
+require_once 'utils/ip.php';
 
 // Check if the user ID is provided in the URL
 if (!isset($_GET['user_id'])) {
@@ -15,10 +11,7 @@ if (!isset($_GET['user_id'])) {
 }
 
 // Database connection
-$conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
-if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
-}
+$conn = get_db_connection();
 
 // Fetch user profile information
 $username = ''; // Initialize $username variable

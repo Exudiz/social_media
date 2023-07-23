@@ -1,12 +1,6 @@
 <?php
-require_once 'config.php';
-require_once 'functions.php';
-
-// Check if the user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
 
 // Database connection
 $conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);

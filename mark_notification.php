@@ -1,15 +1,13 @@
 <?php
-require_once 'config.php';
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
 
 if (isset($_GET['id']) && isset($_GET['action'])) {
     $notificationId = $_GET['id'];
     $action = $_GET['action'];
 
     // Database connection
-    $conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
-    if (!$conn) {
-        die("Connection failed: " . mysqli_connect_error());
-    }
+    $conn = get_db_connection();
 
     if ($action === 'read') {
         // Update the notification as read in the database

@@ -1,11 +1,6 @@
 <?php
-require_once 'config.php';
-
-// Check if the user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
 
 // Check if the reply ID is provided in the POST data
 if (!isset($_POST['reply_id'])) {
@@ -17,10 +12,7 @@ $replyId = $_POST['reply_id'];
 $replyContent = $_POST['reply_content'];
 
 // Database connection
-$conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
-if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
-}
+$conn = get_db_connection();
 
 // Fetch the reply
 $sql_reply = "SELECT * FROM replies WHERE id = ?";

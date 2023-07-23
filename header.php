@@ -1,5 +1,6 @@
 <?php
-require_once 'config.php';
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
 
 // Fetch the username from the session or database
 $username = isset($_SESSION['user_info']['username']) ? $_SESSION['user_info']['username'] : '';
@@ -10,11 +11,8 @@ $userLogo = isset($_SESSION['user_logo']) ? $_SESSION['user_logo'] : 'uploads/de
 // Fetch user's information
 $userInfo = isset($_SESSION['user_info']) ? $_SESSION['user_info'] : array();
 
-// Establish a new database connection
-$conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
-if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
-}
+// Database connection
+$conn = get_db_connection();
 
 // Fetch the count of notifications for the current user
 $notificationCount = 0;

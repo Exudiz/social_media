@@ -1,6 +1,6 @@
 <?php
-require_once 'config.php';
-require_once 'functions.php';
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
 
 // Fetch all hashtags and their counts
 function get_all_hashtags($conn) {

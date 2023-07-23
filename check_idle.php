@@ -1,16 +1,9 @@
 <?php
-session_start();
-require_once 'config.php';
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
 
-// Check if the user is logged in
-if (isset($_SESSION['user_id'])) {
-    // Database connection
-    $conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
-    if (!$conn) {
-        die("Connection failed: " . mysqli_connect_error());
-    }
-
-    $userId = $_SESSION['user_id'];
+// Database connection
+$conn = get_db_connection();
 
     // Fetch the user's last activity timestamp from the database
     $sql_last_activity = "SELECT last_activity FROM users WHERE id = ?";

@@ -1,4 +1,10 @@
 <?php
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
+
+// Database connection
+$conn = get_db_connection();
+
 // Retrieve the post ID from the AJAX request
 $postId = $_POST['post_id'];
 

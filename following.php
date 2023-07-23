@@ -1,25 +1,13 @@
 <?php
-// following.php
-
-// Include the necessary files
-require_once 'config.php';
-
-// Check if the user is logged in
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
 
 // Check if the user_id parameter is present in the URL
 if (isset($_GET['user_id'])) {
     $follower_id = $_GET['user_id'];
 
-    // Create a new database connection
-    $conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
-    if (!$conn) {
-        die("Connection failed: " . mysqli_connect_error());
-    }
+    // Database connection
+    $conn = get_db_connection();
 
     // Fetch the user's username from the database
     $sql_user = "SELECT username FROM users WHERE id = ?";

@@ -1,43 +1,44 @@
 <?php
-session_start();
-require_once 'config.php';
-
-// Check if the user is logged in
-if (isset($_SESSION['user_id'])) {
-    if (basename($_SERVER['PHP_SELF']) !== 'public_wall.php') {
-        header("Location: public_wall.php");
-        exit();
-    }
-}
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
 
 // Database connection
-$conn = mysqli_connect($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
-if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
-}
+$conn = get_db_connection();
 
-// Fetch posts from the users being followed by the logged-in user
-$loggedInUserId = $_SESSION['user_id'];
-$sql = "SELECT posts.*, users.username FROM posts
-        INNER JOIN followers ON posts.user_id = followers.followee_id
-        INNER JOIN users ON posts.user_id = users.id
-        WHERE followers.follower_id = '$loggedInUserId'
-        ORDER BY posts.created_at DESC";
-$result = mysqli_query($conn, $sql);
-$posts = [];
-if (mysqli_num_rows($result) > 0) {
-    while ($row = mysqli_fetch_assoc($result)) {
-        $posts[] = $row;
+// Function to get the list of users the current user is following
+function getFollowing($conn, $user_id) {
+    $following = array();
+    $sql_following = "SELECT followee_id FROM followers WHERE follower_id = ?";
+    $stmt_following = mysqli_prepare($conn, $sql_following);
+    mysqli_stmt_bind_param($stmt_following, "i", $user_id);
+    mysqli_stmt_execute($stmt_following);
+    $result_following = mysqli_stmt_get_result($stmt_following);
+    while ($row = mysqli_fetch_assoc($result_following)) {
+        $following[] = $row['followee_id'];
     }
+    return $following;
 }
 
+// Fetch the list of users the current user is following
+$following_users = getFollowing($conn, $_SESSION['user_id']);
+$following_users[] = $_SESSION['user_id']; // Include the current user in the posts
+
+// Fetch posts from all users and the followed users
+$sql_posts = "SELECT p.*, u.username
+              FROM posts p
+              INNER JOIN users u ON p.user_id = u.id
+              WHERE (p.user_id IN (" . implode(',', $following_users) . ") OR p.visibility = 1)  -- Show posts from followed users or public posts (visibility = 1)
+              ORDER BY p.created_at DESC";
+$result_posts = mysqli_query($conn, $sql_posts);
+
+// Close the database connection
 mysqli_close($conn);
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Social Media Website</title>
+    <title>Public Wall</title>
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <!-- Custom CSS -->
@@ -48,10 +49,10 @@ mysqli_close($conn);
 <body>
 <?php include 'header.php'; ?>
 
+<!-- Public wall content -->
 <div class="container">
-    <?php if (!empty($posts)) { ?>
-        <h2>Public Wall</h2>
-        <?php foreach ($posts as $post) { ?>
+    <?php if (mysqli_num_rows($result_posts) > 0): ?>
+        <?php while ($post = mysqli_fetch_assoc($result_posts)): ?>
             <div class="card mb-3">
                 <div class="card-body">
                     <h5 class="card-title"><?php echo $post['username']; ?></h5>
@@ -60,10 +61,10 @@ mysqli_close($conn);
                     <a href="profile.php?user_id=<?php echo $post['user_id']; ?>">View Profile</a>
                 </div>
             </div>
-        <?php } ?>
-    <?php } else { ?>
+        <?php endwhile; ?>
+    <?php else: ?>
         <h2>No posts to display on the public wall.</h2>
-    <?php } ?>
+    <?php endif; ?>
 </div>
 
 <!-- jQuery, Popper.js, and Bootstrap JS -->

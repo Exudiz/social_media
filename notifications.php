@@ -1,5 +1,6 @@
 <?php
-require_once 'config.php';
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
 
 class Notification
 {
@@ -21,8 +22,8 @@ class Notification
         return $result->num_rows > 0;
     }
 
-    // Function to retrieve notifications for a user
-    public function getNotifications($user_id)
+    // Function to retrieve notifications for a user with messages
+    public function getNotificationsWithMessages($user_id)
     {
         $sql = "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC";
         $stmt = $this->conn->prepare($sql);
@@ -33,7 +34,7 @@ class Notification
 
         if ($result->num_rows > 0) {
             while ($row = $result->fetch_assoc()) {
-                $row['is_read'] = (bool)$row['is_read']; // Convert is_read to boolean
+                $row['is_read'] = (bool) $row['is_read']; // Convert is_read to boolean
                 $notifications[] = $row;
             }
         }
@@ -77,10 +78,7 @@ class Notification
 }
 
 // Database connection
-$conn = new mysqli($dbConfig['host'], $dbConfig['username'], $dbConfig['password'], $dbConfig['dbname']);
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+$conn = get_db_connection();
 
 $notification = new Notification($conn);
 
@@ -88,7 +86,7 @@ $notification = new Notification($conn);
 $user_id = $_SESSION['user_id'];
 
 // Fetch the notifications for the user
-$notifications = $notification->getNotifications($user_id);
+$notifications = $notification->getNotificationsWithMessages($user_id);
 
 $conn->close();
 ?>
@@ -115,14 +113,16 @@ $conn->close();
         <?php if (empty($notifications)): ?>
             <p>No notifications found.</p>
         <?php else: ?>
-            <?php foreach ($notifications as $notification): ?>
-                <div class="notification">
-                    <p><?php echo htmlspecialchars($notification['message']); ?></p>
-                    <p class="time"><?php echo getTimeAgo($notification['created_at']); ?></p>
-                    <a href="mark_notification.php?id=<?php echo $notification['id']; ?>&action=read">Mark as Read</a>
-                    <a href="mark_notification.php?id=<?php echo $notification['id']; ?>&action=delete">Delete</a>
-                </div>
-            <?php endforeach; ?>
+          <?php foreach ($notifications as $notification): ?>
+              <div class="notification">
+                  <?php if (isset($notification['message'])): ?>
+                      <p><?php echo htmlspecialchars($notification['message']); ?></p>
+                  <?php endif; ?>
+                  <p class="time"><?php echo getTimeAgo($notification['created_at']); ?></p>
+                  <a href="mark_notification.php?id=<?php echo $notification['id']; ?>&action=read">Mark as Read</a>
+                  <a href="mark_notification.php?id=<?php echo $notification['id']; ?>&action=delete">Delete</a>
+              </div>
+          <?php endforeach; ?>
         <?php endif; ?>
 
     <!-- Include Bootstrap JS scripts -->

@@ -1,4 +1,7 @@
 <?php
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
+
 // Retrieve the post ID from the AJAX request
 $postId = $_POST['post_id'];
 

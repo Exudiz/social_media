@@ -1,5 +1,6 @@
 <?php
-require_once 'config.php';
+require_once 'utils/config.php';
+require_once 'utils/functions.php';
 
 // Function to establish a database connection
 function connectDatabase() {
@@ -56,73 +57,8 @@ function get_username_by_id($user_id) {
     return null;
 }
 
-// Function to calculate time ago
-function time_ago($datetime) {
-    $current_time = new DateTime();
-    $post_time = new DateTime($datetime);
-    $interval = $post_time->diff($current_time);
-
-    if ($interval->y > 0) {
-        return $interval->format("%y year" . ($interval->y > 1 ? "s" : "") . " ago");
-    } elseif ($interval->m > 0) {
-        return $interval->format("%m month" . ($interval->m > 1 ? "s" : "") . " ago");
-    } elseif ($interval->d > 0) {
-        return $interval->format("%d day" . ($interval->d > 1 ? "s" : "") . " ago");
-    } elseif ($interval->h > 0) {
-        return $interval->format("%h hour" . ($interval->h > 1 ? "s" : "") . " ago");
-    } elseif ($interval->i > 0) {
-        return $interval->format("%i minute" . ($interval->i > 1 ? "s" : "") . " ago");
-    } else {
-        return "Just now";
-    }
-}
-
-// Function to get the count of a specific hashtag
-function get_hashtag_count($tag) {
-    $conn = connectDatabase();
-
-    $sql_hashtag_count = "SELECT COUNT(*) AS count FROM hashtags WHERE tag = ?";
-    $stmt_hashtag_count = mysqli_prepare($conn, $sql_hashtag_count);
-    mysqli_stmt_bind_param($stmt_hashtag_count, "s", $tag);
-    mysqli_stmt_execute($stmt_hashtag_count);
-    $result_hashtag_count = mysqli_stmt_get_result($stmt_hashtag_count);
-
-    if ($result_hashtag_count && mysqli_num_rows($result_hashtag_count) > 0) {
-        $row_hashtag_count = mysqli_fetch_assoc($result_hashtag_count);
-        return $row_hashtag_count['count'];
-    }
-
-    return 0;
-}
-
-// Function to get hashtags for each post
-function get_post_hashtags($post_id) {
-    $conn = connectDatabase();
-
-    $sql_hashtags = "SELECT * FROM hashtags WHERE post_id = ?";
-    $stmt_hashtags = mysqli_prepare($conn, $sql_hashtags);
-    mysqli_stmt_bind_param($stmt_hashtags, "i", $post_id);
-    mysqli_stmt_execute($stmt_hashtags);
-    $result_hashtags = mysqli_stmt_get_result($stmt_hashtags);
-
-    $hashtags = array();
-
-    if ($result_hashtags) {
-        while ($row_hashtags = mysqli_fetch_assoc($result_hashtags)) {
-            $hashtags[] = $row_hashtags['tag'];
-        }
-        mysqli_free_result($result_hashtags);
-    } else {
-        $error = "Error retrieving hashtags for post ID: $post_id - " . mysqli_error($conn);
-    }
-
-    mysqli_close($conn);
-
-    return $hashtags;
-}
-
 // Database connection
-$conn = connectDatabase();
+$conn = get_db_connection();
 
 // Check if the user is logged in
 if (!isset($_SESSION['user_id'])) {
