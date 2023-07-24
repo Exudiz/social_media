@@ -33,9 +33,12 @@ if (mysqli_num_rows($result_post) > 0) {
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_post'])) {
     $newContent = $_POST['new_content'];
 
-    // Update the post in the database
-    $sql_update_post = "UPDATE posts SET content='$newContent' WHERE id='$post_id'";
-    if (mysqli_query($conn, $sql_update_post)) {
+    // Update the post in the database using a prepared statement
+    $sql_update_post = "UPDATE posts SET content=? WHERE id=?";
+    $stmt_update_post = mysqli_prepare($conn, $sql_update_post);
+    mysqli_stmt_bind_param($stmt_update_post, "si", $newContent, $post_id);
+
+    if (mysqli_stmt_execute($stmt_update_post)) {
         $message = "Post updated successfully!";
         // Redirect the user back to profile.php after 3 seconds
         header("Refresh: 3; URL=profile.php");
@@ -45,6 +48,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_post'])) {
     } else {
         $error = "Error updating post: " . mysqli_error($conn);
     }
+
+    mysqli_stmt_close($stmt_update_post);
 }
 
 mysqli_close($conn);

@@ -17,18 +17,6 @@ function closeDatabaseConnection($conn) {
     mysqli_close($conn);
 }
 
-// Function to insert user activity
-function insertUserActivity($userId, $activityType, $activityDetails) {
-    $conn = connectToDatabase();
-    $activityDate = date('Y-m-d H:i:s');
-    $sql = "INSERT INTO user_activity (user_id, activity_type, activity_date, activity_details) VALUES (?, ?, ?, ?)";
-    $stmt = mysqli_prepare($conn, $sql);
-    mysqli_stmt_bind_param($stmt, "isss", $userId, $activityType, $activityDate, $activityDetails);
-    mysqli_stmt_execute($stmt);
-    mysqli_stmt_close($stmt);
-    closeDatabaseConnection($conn);
-}
-
 // Fetch the user's recent activities
 $userId = $_SESSION['user_id'];
 $conn = connectToDatabase();

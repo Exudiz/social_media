@@ -63,24 +63,61 @@
         </form>
     </div>
 <?php } else { ?>
-    <!-- Public wall content -->
-    <div class="container">
-        <?php if (!empty($posts)) { ?>
-            <h2>Public Wall</h2>
-            <?php foreach ($posts as $post) { ?>
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <h5 class="card-title"><?php echo $post['username']; ?></h5>
-                        <p class="card-text"><?php echo $post['content']; ?></p>
-                        <p class="card-text"><small><?php echo $post['created_at']; ?></small></p>
-                        <a href="profile.php?user_id=<?php echo $post['user_id']; ?>">View Profile</a>
-                    </div>
-                </div>
-            <?php } ?>
-        <?php } else { ?>
-            <h2>No posts to display on the public wall.</h2>
-        <?php } ?>
-    </div>
+  <!-- Public wall content -->
+  <div class="container">
+      <?php if (!empty($posts)) { ?>
+          <h2>Public Wall</h2>
+          <?php foreach ($posts as $post) { ?>
+              <div class="card mb-3">
+                  <div class="card-body">
+                      <h5 class="card-title"><a href="profile.php?user_id=<?php echo $post['user_id']; ?>"><?php echo $post['username']; ?></a></h5>
+                      <p class="card-text"><?php echo $post['content']; ?></p>
+                      <p class="card-text"><small><?php echo $post['created_at']; ?></small></p>
+                      <div class="post-actions">
+                          <a href="#" class="post-like">Like</a>
+                          <a href="#" class="post-share">Share</a>
+                      </div>
+                      <div class="row">
+                          <div class="col-md-4">
+                              <p class="card-text">Likes: <?php echo $post['likes']; ?></p>
+                          </div>
+                          <div class="col-md-4">
+                              <?php if (isset($post['shares'])) { ?>
+                                  <p class="card-text">Shares: <?php echo $post['shares']; ?></p>
+                              <?php } else { ?>
+                                  <p class="card-text">Shares: 0</p>
+                              <?php } ?>
+                          </div>
+                          <div class="col-md-4">
+                              <p class="card-text">Comments: <?php echo count($post['comments']); ?></p>
+                          </div>
+                      </div>
+
+                      <?php // Show comment section ?>
+                      <?php if (!empty($post['comments'])) { ?>
+                          <h6>Comments:</h6>
+                          <ul>
+                              <?php foreach ($post['comments'] as $comment) { ?>
+                                  <li><?php echo $comment['content']; ?></li>
+                              <?php } ?>
+                          </ul>
+                      <?php } ?>
+
+                      <?php // Add comment form ?>
+                      <form action="add_comment.php" method="POST">
+                          <div class="form-group">
+                              <input type="hidden" name="post_id" value="<?php echo $post['id']; ?>">
+                              <input type="text" class="form-control" name="comment_content" placeholder="Add a comment">
+                          </div>
+                          <button type="submit" class="btn btn-primary">Add Comment</button>
+                      </form>
+                  </div>
+              </div>
+          <?php } ?>
+      <?php } else { ?>
+          <p>No posts found.</p>
+      <?php } ?>
+  </div>
 <?php } ?>
 
 <!-- Forgot Password Modal -->

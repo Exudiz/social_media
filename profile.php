@@ -60,9 +60,8 @@ $sql_posts = "SELECT p.*, COUNT(pl.user_id) AS likes
               LEFT JOIN post_likes pl ON p.id = pl.post_id
               WHERE (p.user_id = ? OR
                      (p.user_id = ? AND p.visibility = 0) OR
-                     (p.visibility = 1) OR
-                     (p.visibility = 2 AND p.user_id IN
-                      (SELECT followee_id FROM followers WHERE follower_id = ?) AND p.user_id = ?) OR
+                     (p.visibility = 1 AND p.user_id = ?) OR
+                     (p.visibility = 2 AND p.user_id = ?) OR
                      (p.user_id IN
                       (SELECT followee_id FROM followers WHERE follower_id = ?) AND p.visibility = 1))
               GROUP BY p.id
