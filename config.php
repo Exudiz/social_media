@@ -2,9 +2,9 @@
 session_start();
 // Database configuration
 $dbConfig = [
-    'host' => '213.171.200.29',
+    'host' => 'ip',
     'username' => 'Exudiz',
-    'password' => 'Amie9586W!',
+    'password' => 'pass',
     'dbname' => 'social_media'
 ];
 
