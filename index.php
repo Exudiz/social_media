@@ -50,22 +50,6 @@ if (mysqli_num_rows($result_posts) > 0) {
     }
 }
 
-// Display the posts
-foreach ($posts as $post) {
-    // Display post details
-    echo "Post ID: " . $post['id'] . "<br>";
-    echo "Content: " . $post['content'] . "<br>";
-    echo "Likes: " . $post['likes'] . "<br>";
-    // Display comments for each post
-    echo "Comments: <br>";
-    foreach ($post['comments'] as $comment) {
-        echo "Comment ID: " . $comment['id'] . "<br>";
-        echo "Content: " . $comment['content'] . "<br>";
-        echo "<br>";
-    }
-    echo "<br>";
-}
-
 // Fetch user profile information
 $username = ''; // Initialize $username variable
 if (isset($_SESSION['user_row'])) {
@@ -111,6 +95,22 @@ if (isset($_SESSION['user_info'])) {
         $_SESSION['user_info'] = $userInfo;
     }
     $stmt_user_info->close();
+}
+
+// Display the posts
+foreach ($posts as $post) {
+    // Display post details
+    echo "Post ID: " . $post['id'] . "<br>";
+    echo "Content: " . $post['content'] . "<br>";
+    echo "Likes: " . $post['likes'] . "<br>";
+    // Display comments for each post
+    echo "Comments: <br>";
+    foreach ($post['comments'] as $comment) {
+        echo "Comment ID: " . $comment['id'] . "<br>";
+        echo "Content: " . $comment['content'] . "<br>";
+        echo "<br>";
+    }
+    echo "<br>";
 }
 
 $conn->close();

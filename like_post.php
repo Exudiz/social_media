@@ -2,34 +2,41 @@
 require_once 'utils/config.php';
 require_once 'utils/functions.php';
 
-// Database connection
-$conn = get_db_connection();
+// Check if the 'post_id' parameter exists and the request method is POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['post_id'])) {
+    // Sanitize the 'post_id' parameter to prevent SQL injection
+    $post_id = filter_var($_POST['post_id'], FILTER_SANITIZE_NUMBER_INT);
 
-// Retrieve the post ID from the AJAX request
-$postId = $_POST['post_id'];
+    // Database connection
+    $conn = get_db_connection();
 
-// Increment the like count in the database
-$sql_like_post = "INSERT INTO post_likes (post_id) VALUES (?)";
-$stmt_like_post = mysqli_prepare($conn, $sql_like_post);
-mysqli_stmt_bind_param($stmt_like_post, "i", $postId);
+    // Check if the user is logged in
+    session_start();
+    if (!isset($_SESSION['user_id'])) {
+        // User is not logged in, return an error response
+        http_response_code(401); // Unauthorized status code
+        echo "Unauthorized: Please log in to like a post.";
+        exit();
+    }
 
-if (mysqli_stmt_execute($stmt_like_post)) {
-    // Get the updated like count
-    $sql_like_count = "SELECT COUNT(*) AS likes_count FROM post_likes WHERE post_id = ?";
-    $stmt_like_count = mysqli_prepare($conn, $sql_like_count);
-    mysqli_stmt_bind_param($stmt_like_count, "i", $postId);
-    mysqli_stmt_execute($stmt_like_count);
-    $result_like_count = mysqli_stmt_get_result($stmt_like_count);
+    $user_id = $_SESSION['user_id'];
 
-    if ($result_like_count && mysqli_num_rows($result_like_count) > 0) {
-        $row_like_count = mysqli_fetch_assoc($result_like_count);
-        $likesCount = $row_like_count['likes_count'];
-
-        // Return the updated like count as a JSON response
-        echo json_encode(['likes_count' => $likesCount]);
+    // Call the 'add_like' function to add the like to the database
+    $result = add_like($conn, $user_id, $post_id);
+    if ($result === true) {
+        // Like added successfully
+        echo "success";
+        exit();
+    } else {
+        // Unable to add the like, return an error response
+        http_response_code(500); // Internal server error status code
+        echo "Error: $result";
+        exit();
     }
 } else {
-    // Handle error
-    echo json_encode(['error' => 'Failed to like the post.']);
+    // Invalid request, return an error response
+    http_response_code(400); // Bad request status code
+    echo "Bad request: Invalid parameters.";
+    exit();
 }
 ?>
