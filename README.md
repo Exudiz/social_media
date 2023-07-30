@@ -17,7 +17,7 @@ A social media platform designed to compete with Facebook and Twitter.
 - Notifications
 - User profiles/edit profile
 - User profiles (with bio, profile picture, banner etc)
-- and much mure
+- and much more
 
 ## Technologies Used
 
