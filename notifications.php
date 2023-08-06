@@ -1,6 +1,7 @@
 <?php
 require_once 'utils/config.php';
 require_once 'utils/functions.php';
+require_once 'utils/notification_functions.php';
 
 class Notification
 {
@@ -10,85 +11,7 @@ class Notification
     {
         $this->conn = $conn;
     }
-
-    // Function to check if a notification already exists
-    public function isNotificationExists($user_id, $type, $post_id, $source_id)
-    {
-        $sql = "SELECT * FROM notifications WHERE user_id = ? AND type = ? AND post_id = ? AND source_id = ?";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bind_param("issi", $user_id, $type, $post_id, $source_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        return $result->num_rows > 0;
-    }
-
-    // Function to retrieve notifications for a user with messages
-    public function getNotificationsWithMessages($user_id)
-    {
-        $sql = "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $notifications = array();
-
-        if ($result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $row['is_read'] = (bool) $row['is_read']; // Convert is_read to boolean
-                $notifications[] = $row;
-            }
-        }
-
-        return $notifications;
-    }
-
-    // Function to insert a notification
-    public function insertNotification($user_id, $type, $post_id, $source_id, $message)
-    {
-        // Check if the notification type should be excluded
-        if ($this->shouldExcludeNotification($type)) {
-            return null;
-        }
-
-        // Log debug information
-        $debugMessage = "Inserting notification - User ID: $user_id, Type: $type, Post ID: $post_id, Source ID: $source_id, Message: $message";
-        logDebug($debugMessage);
-
-        // Check if the notification already exists
-        if ($this->isNotificationExists($user_id, $type, $post_id, $source_id)) {
-            return null;
-        }
-
-        // Your code to insert the notification into the database goes here
-        $sql = "INSERT INTO notifications (user_id, type, post_id, source_id, message, created_at) VALUES (?, ?, ?, ?, ?, NOW())";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bind_param("issis", $user_id, $type, $post_id, $source_id, $message);
-        $stmt->execute();
-        $insertedId = $stmt->insert_id;
-        return $insertedId;
-    }
-
-    // Function to determine if a notification type should be excluded
-    public function shouldExcludeNotification($type)
-    {
-        // Modify this function according to your logic
-        // Return true if the notification type should be excluded, otherwise return false
-        return ($type === 'post_created' || $type === 'specific_action');
-    }
-}
-
-// Database connection
-$conn = get_db_connection();
-
-$notification = new Notification($conn);
-
-// Fetch the user ID from the session or adjust it based on your authentication logic
-$user_id = $_SESSION['user_id'];
-
-// Fetch the notifications for the user
-$notifications = $notification->getNotificationsWithMessages($user_id);
-
-$conn->close();
+  }
 ?>
 
 <?php include 'header.php'; ?>
